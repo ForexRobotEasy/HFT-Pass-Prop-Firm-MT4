@@ -1,0 +1,135 @@
+
+//+------------------------------------------------------------------+
+//|                                                   HFT Pass Prop Firm MT4                                                     |
+//|                                             Developer: Forex Robot Easy Team                                         |
+//|                                             Website: forexroboteasy.com                                                      |
+//+------------------------------------------------------------------+
+#property strict
+
+// Define necessary constants
+#define TRADE_MAGIC_NUMBER 123456
+#define TRADE_VOLUME 0.01
+#define TRADE_STOP_LOSS 50
+#define TRADE_TAKE_PROFIT 100
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                     |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   // Set trade execution options
+   if(!Trade.SetExpertMagicNumber(TRADE_MAGIC_NUMBER))
+   {
+      Print('Failed to set expert magic number!');
+      return INIT_FAILED;
+   }
+   
+   if(!Trade.SetAsyncMode(true))
+   {
+      Print('Failed to set async mode!');
+      return INIT_FAILED;
+   }
+   
+   return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                   |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+   // Close all open positions
+   for(int i=PositionsTotal()-1; i>=0; i--)
+   {
+      if(PositionSelectByIndex(i))
+      {
+         if(PositionGetInteger(POSITION_MAGIC) == TRADE_MAGIC_NUMBER)
+         {
+            Trade.PositionClose(PositionGetTicket());
+         }
+      }
+   }
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                               |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+   // Check for available funds
+   double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+   if(accountBalance <= 0)
+   {
+      Print('Insufficient funds!');
+      return;
+   }
+   
+   // Check for existing positions
+   if(PositionsTotal() > 0)
+   {
+      for(int i=PositionsTotal()-1; i>=0; i--)
+      {
+         if(PositionSelectByIndex(i))
+         {
+            if(PositionGetInteger(POSITION_MAGIC) == TRADE_MAGIC_NUMBER)
+            {
+               Print('Position already open!');
+               return;
+            }
+         }
+      }
+   }
+   
+   // Get current market conditions
+   double currentBid = SymbolInfoDouble(Symbol(), SYMBOL_BID);
+   double currentAsk = SymbolInfoDouble(Symbol(), SYMBOL_ASK);
+   
+   // Place a buy order
+   int buyTicket = Trade.Buy(TRADE_VOLUME, currentAsk, TRADE_STOP_LOSS, TRADE_TAKE_PROFIT, 'Buy order', TRADE_MAGIC_NUMBER);
+   if(buyTicket <= 0)
+   {
+      Print('Failed to place buy order!');
+      return;
+   }
+   
+   // Place a sell order
+   int sellTicket = Trade.Sell(TRADE_VOLUME, currentBid, TRADE_STOP_LOSS, TRADE_TAKE_PROFIT, 'Sell order', TRADE_MAGIC_NUMBER);
+   if(sellTicket <= 0)
+   {
+      Print('Failed to place sell order!');
+      return;
+   }
+   
+   // Calculate profit/loss
+   double profitLoss = 0;
+   for(int i=PositionsTotal()-1; i>=0; i--)
+   {
+      if(PositionSelectByIndex(i))
+      {
+         if(PositionGetInteger(POSITION_MAGIC) == TRADE_MAGIC_NUMBER)
+         {
+            profitLoss += PositionGetDouble(POSITION_PROFIT);
+         }
+      }
+   }
+   
+   Print('Total profit/loss: ', profitLoss);
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                               |
+//+------------------------------------------------------------------+
+void OnTimer()
+{
+   // Perform risk management actions
+   // ...
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                               |
+//+------------------------------------------------------------------+
+void OnTradeTransaction(const MqlTradeTransaction& transaction)
+{
+   // Monitor trade transactions
+   // ...
+}
